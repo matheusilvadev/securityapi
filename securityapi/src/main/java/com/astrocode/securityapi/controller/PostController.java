@@ -1,10 +1,14 @@
 package com.astrocode.securityapi.controller;
 
 import com.astrocode.securityapi.dtos.CreatePostDTO;
+import com.astrocode.securityapi.dtos.FeedDTO;
+import com.astrocode.securityapi.dtos.FeedItemDTO;
 import com.astrocode.securityapi.entities.Post;
 import com.astrocode.securityapi.entities.Role;
 import com.astrocode.securityapi.repository.PostRepository;
 import com.astrocode.securityapi.repository.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -24,6 +28,26 @@ public class PostController {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
     }
+
+    @GetMapping("/feed")
+    public ResponseEntity<FeedDTO> feed(@RequestParam(value = "page", defaultValue = "0") int page,
+                                        @RequestParam(value = "pageSize", defaultValue = "10") int pageSize){
+        var posts = postRepository.findAll(
+                PageRequest.of(page, pageSize, Sort.Direction.DESC, "creationTimestamp"))
+                .map(post ->
+                        new FeedItemDTO(post.getPostId(),
+                                post.getContent(),
+                                post.getUser().getUsername())
+                );
+        return ResponseEntity.ok(new FeedDTO(
+                posts.getContent(),
+                page,
+                pageSize,
+                posts.getTotalPages(),
+                posts.getTotalElements())
+        );
+    }
+
 
     @PostMapping("/posts")
     public ResponseEntity<Void> createPost(@RequestBody CreatePostDTO postDTO,
