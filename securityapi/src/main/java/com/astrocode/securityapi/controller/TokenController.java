@@ -2,6 +2,7 @@ package com.astrocode.securityapi.controller;
 
 import com.astrocode.securityapi.dtos.LoginRequest;
 import com.astrocode.securityapi.dtos.LoginResponse;
+import com.astrocode.securityapi.entities.Role;
 import com.astrocode.securityapi.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -15,9 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/login")
 public class TokenController {
 
     private final JwtEncoder jwtEncoder;
@@ -30,7 +31,7 @@ public class TokenController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @PostMapping
+    @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest){
        var user = userRepository.findByUsername(loginRequest.username());
 
@@ -41,11 +42,18 @@ public class TokenController {
         //Configure the jwt attributes (claims) to send
        var now = Instant.now();
        var expiresIn = 300L;
+
+       var scopes = user.get().getRoles()
+               .stream()
+               .map(Role::getName)
+               .collect(Collectors.joining(" "));
+
        var claims = JwtClaimsSet.builder()
                .issuer("mybackend")
                .subject(user.get().getUserId().toString())
                .issuedAt(now)
                .expiresAt(now.plusSeconds(expiresIn))
+               .claim("scope", scopes)
                .build();
 
        var jwtValue  = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
